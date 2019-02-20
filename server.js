@@ -2,12 +2,11 @@ const express = require('express')
 const morgan = require('morgan')
 const bodyParser = require('body-parser')
 const cookieParser = require('cookie-parser')
-var mustacheExpress = require('mustache-express')
 const expressHandlebars = require('express-handlebars')
 const routes = require('./routes')
 
 // the port to listen on. choose whatever you want!
-const port = process.env.PORT || 3000
+const port = process.env.PORT || 5000
 
 // create a new express app:
 const app = express()

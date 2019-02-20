@@ -2,7 +2,7 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 const db = require("./database");
 const User = require("./models/User");
-const Jogs = require("./models/Joggings");
+const Joggings = require("./models/Jogging");
 
 const routes = new express.Router();
 
@@ -95,7 +95,7 @@ routes.get("/sign-out", function(req, res) {
 routes.get("/delete-account", function(req, res) {
   const accountId = req.cookies.userId;
   console.log("delete user", accountId);
-  Jogs.deleteAccountById(accountId);
+  Joggings.deleteAccountById(accountId);
   User.deleteAccountById(accountId);
 
   res.redirect("/sign-in");
@@ -264,7 +264,7 @@ routes.get("/times/new", function(req, res) {
 routes.post("/times/new", function(req, res) {
   const form = req.body;
 
-  const timesId = Jogs.insert(
+  const timesId = Joggings.insert(
     form.startTime,
     form.distance,
     form.duration,
@@ -281,13 +281,13 @@ routes.get("/times/:id", function(req, res) {
   console.log("get time", timeId);
 
   
-  const jogs = Jogs.findById(timeId);
+  const jogs = Joggings.findById(timeId);
   const loggedInUser = User.findById(req.cookies.userId);
   const jogTime = {
     id: timeId,
-    startTime: Jogs.startTime,
-    duration: Jogs.duration,
-    distance: Jogs.distance
+    startTime: Joggings.startTime,
+    duration: Joggings.duration,
+    distance: Joggings.distance
   };
 
   res.render("edit-time.html", { jogs, time: jogTime, user: loggedInUser });
@@ -303,7 +303,7 @@ routes.post("/times/:id", function(req, res) {
   console.log("Time editted: ", timeId, form)
 
   
-  Jogs.updateJogById(form.startTime, form.distance, form.duration, timeId);
+  Joggings.updateJogById(form.startTime, form.distance, form.duration, timeId);
   res.redirect("/times");
 });
 
@@ -313,7 +313,7 @@ routes.get("/times/:id/delete", function(req, res) {
   console.log("time deleted:", timeId);
 
   
-  Jogs.deleteTimeById(timeId);
+  Joggings.deleteTimeById(timeId);
   res.redirect("/times");
 });
 

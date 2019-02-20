@@ -1,328 +1,253 @@
-const express = require("express");
-const bcrypt = require("bcryptjs");
-const db = require("./database");
-const User = require("./models/User");
-const Joggings = require("./models/Jogging");
+const express = require('express')
+const bcrypt = require('bcryptjs')
 
-const routes = new express.Router();
+const user = require('./models/User')
+const jogging = require('./models/Jogging')
+const following = require('./models/Following')
 
-const saltRounds = 10;
+const routes = new express.Router()
 
+const saltRounds = 10
 
-routes.get("/", function(req, res) {
-  if (req.cookies.userId) {
-    console.log(req.cookies.userId);
-    
-    res.redirect("/times");
-  } else {
-    
-    res.redirect("/sign-in");
-  }
-});
+function formatDateForHTML(date) {
+    return new Date(date).toISOString().slice(0, -8)
+}
 
-
-routes.get("/create-account", function(req, res) {
-  res.render("create-account.html");
-});
-
-
-routes.post("/create-account", function(req, res) {
-  const form = req.body;
-
-
-
-
-
-  const passwordHash = bcrypt.hashSync(form.password, saltRounds);
-
-
-  const userId = User.insert(form.name, form.email, passwordHash);
-  res.cookie("userId", userId);
-
-
-  res.redirect("/times/new");
-});
-
-
-routes.get("/sign-in", function(req, res) {
-  res.render("sign-in.html");
-});
-
-routes.post("/sign-in", function(req, res) {
-  const form = req.body;
-  const get_user_id = db.prepare(
-    `SELECT id as the_user_id from user WHERE email = ?`
-  );
-  the_user_id = get_user_id.get(form.email);
-
-  console.log(
-    "LOOK HERE TO SEE THE USER ID PLEASE...",
-    the_user_id.the_user_id
-  );
-
-  const user = User.findByEmail(form.email);
-
-  if (user) {
-    console.log({ form, user });
-    if (bcrypt.compareSync(form.password, user.passwordHash)) {
-
-      res.cookie("userId", the_user_id.the_user_id);
-
-      res.redirect("/times");
+// main page
+routes.get('/', (req, res) => {
+    if (req.cookies.userId) {
+        // if we've got a user id, assume we're logged in and redirect to the app:
+        res.redirect('/times')
     } else {
-
-      res.render("sign-in.html", {
-        errorMessage: "Email address and password do not match"
-      });
+        // otherwise, redirect to login
+        res.redirect('/sign-in')
     }
-  } else {
-
-    res.render("sign-in.html", {
-      errorMessage: "No user with that email exists"
-    });
-  }
-});
+})
 
 
-routes.get("/sign-out", function(req, res) {
+// show the create account page
+routes.get('/create-account', (req, res) => {
+    res.render('create-account.html')
+})
 
-  res.clearCookie("userId");
+// handle create account forms:
+routes.post('/create-account', (req, res) => {
+    const form = req.body
 
-  res.redirect("/sign-in");
-});
+    // TODO: add some validation in here to check
+    console.log('create user', form)
 
+    // hash the password - we dont want to store it directly
+    const passwordHash = bcrypt.hashSync(form.password, saltRounds)
 
-routes.get("/delete-account", function(req, res) {
-  const accountId = req.cookies.userId;
-  console.log("delete user", accountId);
-  Joggings.deleteAccountById(accountId);
-  User.deleteAccountById(accountId);
+    // create the user
+    const userId = user.insert(form.name, form.email, passwordHash)
 
-  res.redirect("/sign-in");
-});
+    // set the userId as a cookie
+    res.cookie('userId', userId)
 
+    // redirect to the logged in page
+    res.redirect('/times')
+})
 
-routes.get("/times", function(req, res) {
-  const loggedInUser = User.findById(req.cookies.userId);
-  const numberOfJogs = db.prepare(
-    `SELECT count(*) as jogs_data from jogs WHERE user_id = ?`
-  );
-  jogs_data = numberOfJogs.get(req.cookies.userId);
-  if (jogs_data.jogs_data < 3) {
-    console.log("NOT ENOUGH JOGS...A MINIMUM OF 3 ARE REQUIRED");
-    res.redirect("/times/new");
-  }
+// show the sign-in page
+routes.get('/sign-in', (req, res) => {
+    res.render('sign-in.html')
+})
 
+routes.post('/sign-in', (req, res) => {
+    const form = req.body
 
-  const get_user_id = db.prepare(
-    `SELECT id as the_user_id from user WHERE email = ?`
-  );
-  the_user_id = get_user_id.get(req.cookies.userId);
+    // find the user that's trying to log in
+    const user = user.findByEmail(form.email)
 
+    // if the user exists...
+    if (user) {
+        console.log({ form, user })
+        if (bcrypt.compareSync(form.password, user.password_hash)) {
+            // the hashes match! set the log in cookie
+            res.cookie('userId', user.id)
+            // redirect to main app:
+            res.redirect('/times')
+        } else {
+            // if the username and password don't match, say so
+            res.render('sign-in.html', {
+                errorMessage: 'Email address and password do not match'
+            })
+        }
+    } else {
+        // if the user doesnt exist, say so
+        res.render('sign-in.html', {
+            errorMessage: 'No user with that email exists'
+        })
+    }
+})
 
-  const distance = db.prepare(
-    `SELECT SUM(distance) As totaldistance FROM jogs WHERE user_id = ?`
-  );
-  const totalDistance = distance.get(req.cookies.userId);
+// handle signing out
+routes.get('/sign-out', (req, res) => {
+    // clear the user id cookie
+    res.clearCookie('userId')
 
-  const duration = db.prepare(
-    `SELECT SUM(duration) As totalduration FROM jogs WHERE user_id = ?`
-  );
-  const totalDuration = duration.get(req.cookies.userId);
-  const avgSpeed = totalDistance.totaldistance / totalDuration.totalduration;
+    // redirect to the login screen
+    res.redirect('/sign-in')
+})
 
-  const numOfJogsCompleted = db.prepare(
-    `SELECT COUNT(*) AS number_of_jogs FROM jogs WHERE user_id = ?`
-  );
-  number_of_jogs = numOfJogsCompleted.get(req.cookies.userId);
+//handle deleting account
+routes.get('/delete-account', (req, res) =>{
+    const accountId = req.cookies.userId
+    console.log('delete user', accountId)
+    user.deleteAccountById(accountId)
+    res.redirect('/sign-in')
+})
 
-  const times_distance = db.prepare(
-    `SELECT distance As new_distance FROM jogs WHERE user_id = ? ORDER BY id DESC LIMIT 3`
-  );
+// list all jog times
+routes.get('/times', (req, res) => {
+    let loggedInUser = user.findById(req.cookies.userId)
 
-  const times_distance2 = db.prepare(
-    `SELECT distance As new_distance2 FROM jogs WHERE user_id = ? ORDER BY id DESC LIMIT 1 OFFSET 1`
-  );
+    let addAll = (accumulator, currentValue) => accumulator + currentValue;
 
-  const times_distance3 = db.prepare(
-    `SELECT distance As new_distance3 FROM jogs WHERE user_id = ? ORDER BY id DESC LIMIT 1 OFFSET 2`
-  );
+    // fake stats - TODO: get real stats from the database->DONE(?)
+    let totalDistance = (jogging.findAllFromUser(req.cookies.userId)).map(jog => {
+        return jog.distance
+    })
+        .reduce(addAll, 0)
 
+    let totalTime = (jogging.findAllFromUser(req.cookies.userId)).map(jog => {
+        return jog.duration
+    })
+        .reduce(addAll, 0)
 
-  console.log(times_distance);
-  const new_distance = times_distance.get(req.cookies.userId);
-  const new_distance2 = times_distance2.get(req.cookies.userId);
-  const new_distance3 = times_distance3.get(req.cookies.userId);
-
-
-  const time_duration = db.prepare(
-    `SELECT duration As new_duration FROM jogs WHERE user_id = ? ORDER BY id DESC LIMIT 1`
-  );
-  const time_duration2 = db.prepare(
-    `SELECT duration As new_duration2 FROM jogs WHERE user_id = ? ORDER BY id DESC LIMIT 1 OFFSET 1`
-  );
-  const time_duration3 = db.prepare(
-    `SELECT duration As new_duration3 FROM jogs WHERE user_id = ? ORDER BY id DESC LIMIT 1 OFFSET 2`
-  );
-
-
-  const new_duration = time_duration.get(req.cookies.userId);
-  const new_duration2 = time_duration2.get(req.cookies.userId);
-  const new_duration3 = time_duration3.get(req.cookies.userId);
-
-
-  const time_avg_speed = new_distance.new_distance / new_duration.new_duration;
-  const time_avg_speed2 =
-    new_distance2.new_distance2 / new_duration2.new_duration2;
-  const time_avg_speed3 =
-    new_distance3.new_distance3 / new_duration3.new_duration3;
-
-
-  
-  const time_id_1 = db.prepare(
-    `SELECT id as time_id FROM jogs WHERE user_id = ? ORDER BY id DESC LIMIT 1 `
-  );
-  const time_id_2 = db.prepare(
-    `SELECT id as time_id_2 FROM jogs WHERE user_id = ? ORDER BY id DESC LIMIT 1 OFFSET 1`
-  );
-  const time_id_3 = db.prepare(
-    `SELECT id as time_id_3 FROM jogs WHERE user_id = ? ORDER BY id DESC LIMIT 1 OFFSET 2 `
-  );
-
-  const time_id = time_id_1.get(req.cookies.userId);
-  const time_id_2 = time_id_2.get(req.cookies.userId);
-  const time_id_3 = time_id_3.get(req.cookies.userId);
+    let avgSpeed = 0
+    if (totalDistance > 0 && totalTime > 0 ){
+        avgSpeed = totalDistance / totalTime
+    }
 
 
-  const date_1 = db.prepare(
-    `SELECT date as new_date FROM jogs WHERE user_id = ? ORDER BY id DESC LIMIT 1 `
-  );
-  const date_2 = db.prepare(
-    `SELECT date as new_date_2 FROM jogs WHERE user_id = ? ORDER BY id DESC LIMIT 1 OFFSET 1 `
-  );
-  const date_3 = db.prepare(
-    `SELECT date as new_date_3 FROM jogs WHERE user_id = ? ORDER BY id DESC LIMIT 1  OFFSET 2 `
-  );
+    let allJogs = jogging.findAllFromUser(req.cookies.userId)
+
+    allJogs.map(obj => {
+        obj.avgSpeed = obj.distance/obj.duration;
+        return obj;
+    })
+
+    res.render('list-times.html', {
+        user: loggedInUser,
+        stats: {
+            totalDistance: totalDistance.toFixed(2),
+            totalTime: totalTime.toFixed(2),
+            avgSpeed: avgSpeed.toFixed(2)
+        },
+
+        // fake times: TODO: get the real jog times from the db->DONE(?)
+
+        times: allJogs
+
+    })
+})
 
 
-  const new_date = date_1.get(req.cookies.userId);
-  const new_date_2 = date_2.get(req.cookies.userId);
-  const new_date_3 = date_3.get(req.cookies.userId);
-  const parse_date_1 = new Date(new_date.new_date).toUTCString();
-  const parse_date_2 = new Date(new_date_2.new_date_2).toUTCString();
-  const parse_date_3 = new Date(new_date_3.new_date_3).toUTCString();
-  the_parsed_date_1 = parse_date_1.toString();
-  the_parsed_date_2 = parse_date_2.toString();
-  the_parsed_date_3 = parse_date_3.toString();
-
-  res.render("list-times.html", {
-    user: loggedInUser,
-    stats: {
-      totalDistance: totalDistance.totaldistance,
-      totalDuration: totalDuration.totalduration,
-      avgSpeed: avgSpeed.toFixed(2),
-      number_of_jogs: number_of_jogs.number_of_jogs
-    },
-
-    times: [
-      {
-        id: time_id.time_id,
-        startTime: the_parsed_date_1,
-        new_duration: new_duration.new_duration,
-        new_distance: new_distance.new_distance,
-        avgSpeed: time_avg_speed.toFixed(2)
-      },
-      {
-        id: time_id_2.time_id_2,
-        startTime: the_parsed_date_2,
-        new_duration2: new_duration2.new_duration2,
-        new_distance2: new_distance2.new_distance2,
-        avgSpeed: time_avg_speed2.toFixed(2)
-      },
-      {
-        id: time_id_3.time_id_3,
-        startTime: the_parsed_date_3,
-        new_duration3: new_duration3.new_duration3,
-        new_distance3: new_distance3.new_distance3,
-        avgSpeed: time_avg_speed3.toFixed(2)
-      }
-    ]
-  });
-});
 
 // show the create time form
-routes.get("/times/new", function(req, res) {
-  // this is hugely insecure. why?
-  const loggedInUser = User.findById(req.cookies.userId);
+routes.get('/times/new', (req, res) => {
+    // this is hugely insecure. why?
+    const loggedInUser = user.findById(req.cookies.userId)
 
-  res.render("create-time.html", {
-    user: loggedInUser
-  });
-});
+    res.render('create-time.html', {
+        user: loggedInUser
+    })
+})
 
 // handle the create time form
-routes.post("/times/new", function(req, res) {
-  const form = req.body;
+routes.post('/times/new', (req, res) => {
+    const form = req.body
 
-  const timesId = Joggings.insert(
-    form.startTime,
-    form.distance,
-    form.duration,
-    req.cookies.userId
-  );
-  console.log("create time", form);
-  res.cookie("timesId", timesId);
-  res.redirect("/times");
-});
+    console.log('create time', form)
+
+    // TODO: save the new time ->DONE(?)
+
+    const newJog = jogging.insert(req.cookies.userId, form.startTime, form.distance, form.duration)
+
+
+    res.redirect('/times')
+})
+
+
+
+//show start following page
+routes.get('/start-following', (req, res) =>{
+    const loggedInUser = user.findById(req.cookies.userId)
+
+    const allFollowees = following.findAllFromUser(req.cookies.userId)
+    res.render('start-following.html', {
+        user: loggedInUser,
+        following: allFollowees
+    })
+})
+
+    //TODO: make sure you cannot follow multiple times, what happens when two or more users have the same name(?)
+//handle start following form
+routes.post('/start-following/new', (req, res) =>{
+    const form = req.body
+    console.log('start following', form)
+
+    const id = user.selectUserByName(form.user).id
+
+     //console.log("THIS USER HAS ID...", id)
+
+    const newFollowing = following.insert(id, req.cookies.userId)
+
+
+    res.redirect('/start-following')
+})
 
 // show the edit time form for a specific time
-routes.get("/times/:id", function(req, res) {
-  const timeId = req.params.id;
-  console.log("get time", timeId);
+routes.get('/times/:id', (req, res) => {
+    const timeId = req.params.id
+    console.log('get time', timeId)
 
-  
-  const jogs = Joggings.findById(timeId);
-  const loggedInUser = User.findById(req.cookies.userId);
-  const jogTime = {
-    id: timeId,
-    startTime: Joggings.startTime,
-    duration: Joggings.duration,
-    distance: Joggings.distance
-  };
+    // TODO: get the real time for this id from the db ->DONE(?)
+    const jogs = jogging.findById(timeId)
+    const loggedInUser = user.findById(req.cookies.userId)
+    const jogTime = {
+        id: timeId,
+        startTime: jogs.date,
+        duration: jogs.duration,
+        distance: jogs.distance
+    }
 
-  res.render("edit-time.html", { jogs, time: jogTime, user: loggedInUser });
-
-  console.log("yoooo THIS IS JOG TIME B ", jogTime);
-});
+    res.render('edit-time.html', {
+        time: jogTime,
+        user: loggedInUser
+    })
+})
 
 // handle the edit time form
-routes.post("/times/:id", function(req, res) {
-  const timeId = req.params.id;
-  const form = req.body;
+routes.post('/times/:id', (req, res) => {
+    const timeId = req.params.id
+    const form = req.body
 
-  console.log("Time editted: ", timeId, form)
+    console.log('edit time', {
+        timeId: timeId,
+        form: form
+    })
 
-  
-  Joggings.updateJogById(form.startTime, form.distance, form.duration, timeId);
-  res.redirect("/times");
-});
+    // TODO: edit the time in the db ->DONE(?)
+
+    jogging.updateJogById(form.startTime, form.distance, form.duration, timeId)
+
+    res.redirect('/times')
+})
 
 // handle deleteing the time
-routes.get("/times/:id/delete", function(req, res) {
-  const timeId = req.params.id;
-  console.log("time deleted:", timeId);
+routes.get('/times/:id/delete', (req, res) => {
+    const timeId = req.params.id
+    console.log('delete time', timeId)
 
-  
-  Joggings.deleteTimeById(timeId);
-  res.redirect("/times");
-});
+    // TODO: delete the time ->DONE(?)
 
-routes.get("/accounts", function(req, res) {
-  const loggedInUser = User.findById(req.cookies.userId);
-  res.render("./accounts.html", {
-    user: loggedInUser
-  });
+    jogging.deleteTimeById(timeId)
 
-  res.status(200);
-});
-module.exports = routes;
+    res.redirect('/times')
+})
+
+module.exports = routes

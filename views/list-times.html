@@ -17,6 +17,11 @@
         <h2>Jog Times</h2>
         <div>
           Signed in as {{ user.name }} ({{ user.email }})
+            <a href="/start-following"
+               class="text-white border border-white rounded p-2 no-underline hover:bg-purple-light ml-4"
+            >
+                Follow Others
+            </a>
           <a
             href="/sign-out"
             class="text-white border border-white rounded p-2 no-underline hover:bg-purple-light ml-4"
@@ -24,16 +29,11 @@
             Sign Out
           </a>
           <a
-            href="/accounts"
-            class="text-white border border-white rounded p-2 no-underline hover:bg-purple-light ml-4"
-            style="background: #57c7bd"
+                  href="/delete-account"
+                  class="text-red-darker border border-red-darker rounded p-2 no-underline hover:bg-purple-light ml-4"
           >
-            Accounts
-          </a>
-          <a
-            class="text-white border border-white rounded p-2 no-underline hover:bg-purple-light ml-4"
-          >
-            {{ stats.number_of_jogs }} Jogs completed
+            Delete Account
+
           </a>
         </div>
       </div>
@@ -63,7 +63,7 @@
             Total Time
           </h3>
           <div class="text-5xl text-blue font-semibold">
-            {{ stats.totalDuration }}
+            {{ stats.totalTime }}
             <span class="text-grey-dark uppercase text-base -ml-2">hrs</span>
           </div>
         </div>
@@ -80,17 +80,6 @@
           </div>
         </div>
       </section>
-      <div
-        class="m-4 p-6 rounded-lg bg-white flex-1 shadow flex flex-col-reverse"
-      >
-        <h3 class="uppercase text-sm text-indigo-light font-semibold">
-          Jogs completed
-        </h3>
-        <div class="text-5xl text-indigo font-semibold">
-          {{ stats.number_of_jogs }}
-          <span class="text-grey-dark uppercase text-base -ml-2"></span>
-        </div>
-      </div>
 
       <section
         class="flex flex-wrap border border-grey-light border-l-0 border-r-0 border-b-0 mt-6 pt-6"
@@ -102,7 +91,7 @@
           Add new time
         </a>
 
-        {{#each new_times}}
+        {{#each times}}
         <a
           class="flex-auto w-64 m-4 p-5 bg-white shadow rounded-lg text-black no-underline"
           href="/times/{{ id }}"
@@ -118,42 +107,6 @@
               km
             </span>
             in {{ duration }}
-            <span
-              class="uppercase text-sm text-grey-darker font-semibold -ml-1"
-            >
-              hrs
-            </span>
-          </p>
-          <p class="text-xl mt-1">
-            Avg. speed: {{ avgSpeed }}
-            <span
-              class="uppercase text-sm text-grey-darker font-semibold -ml-1"
-            >
-              km/hr
-            </span>
-          </p>
-        </a>
-        {{/each}}
-
-        {{#each times}}
-        <a
-          class="flex-auto w-64 m-4 p-5 bg-white shadow rounded-lg text-black no-underline"
-          href="/times/{{ id }}"
-        >
-          <h3 class="text-grey-darker uppercase text-base font-normal">
-            {{ startTime }}
-          </h3>
-          <p class="text-xl mt-2">
-            {{ new_distance }}
-            {{ new_distance2 }}
-            {{ new_distance3 }}
-            <span
-              class="uppercase text-sm text-grey-darker font-semibold -ml-1"
-            >
-              km
-            </span>
-            in {{ new_duration }} {{ new_duration2 }} {{ new_duration3 }}
-
             <span
               class="uppercase text-sm text-grey-darker font-semibold -ml-1"
             >

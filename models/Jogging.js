@@ -1,66 +1,66 @@
-var db = require("../database");
+const db = require('../database')
 
 // get the queries ready - note the ? placeholders
-var insertJogs = db.prepare(
-  "INSERT INTO jogs (date, duration, distance, user_id) VALUES (?, ?, ?, ?)"
-);
+const insertJog = db.prepare('INSERT INTO jog (user_id, date, distance, duration) VALUES (?, ?, ?, ?)')
+const selectJog = db.prepare('SELECT * FROM jog WHERE id = ?')
+const selectJogUser = db.prepare('SELECT * FROM jog WHERE user_id = ?')
+const updateJog = db.prepare('UPDATE jog SET date = ?, distance = ?, duration = ?  WHERE id = ?')
+const deleteTime = db.prepare ('DELETE FROM jog WHERE id = ?')
 
-var selectjogsById = db.prepare("SELECT * FROM jogs WHERE id = ?");
-var selectJogByUser = db.prepare("SELECT * FROM jogs WHERE user_id = ?");
-var updateJogById = db.prepare(
-  "UPDATE jogs SET date = ?, distance = ?, duration = ?  WHERE id = ?"
-);
-var deleteTimeById = db.prepare("DELETE FROM jogs WHERE id = ?");
-var deleteAccountById = db.prepare("DELETE FROM jogs WHERE user_id = ?");
-
-class Jogs {
-  static insert(date, duration, distance, user_id) {
-    // run the insert query
-    var info = insertJogs.run(date, distance, duration, user_id);
-
-    // check what the newly inserted row id is
-    var jogsId = info.lastInsertRowid;
-
-    return jogsId;
-  }
-  static updateJogById(date, distance, duration, id) {
-    updateJogById.run(date, distance, duration, id);
-  }
-  static deleteTimeById(id) {
-    deleteTimeById.run(id);
-  }
-  static findById(id) {
-    var row = selectjogsById.get(id);
-
-    if (row) {
-      return new Jogs(row);
-    } else {
-      return null;
+class Jogging {
+    static insert(user_id, date, distance, duration) {
+        // run the insert query
+        const info = insertJog.run(user_id, date, distance, duration)
+        // check what the newly inserted row id is
+        const jogId = info.lastInsertRowid
+        return jogId
     }
-  }
-  static findByUser(id) {
-    var row = selectJogByUser.get(id);
 
-    if (row) {
-      return new Jog(row);
-    } else {
-      return null;
+    static updateJogById(date, distance ,duration, id){
+        updateJog.run(date, distance, duration, id)
     }
-  }
-  static findAllFromUser(id) {
-    var allJogs = selectJogByUser.all(id);
-    return allJogs;
-  }
 
-  static deleteAccountById(id) {
-    deleteAccountById.run(id);
-  }
 
-  constructor(databaseJogsRow) {
-    this.id = databaseJogsRow.id;
-    this.distance = databaseJogsRow.distance;
-    this.duration = databaseJogsRow.duration;
-  }
+    static deleteTimeById(id){
+        deleteTime.run(id)
+    }
+
+
+
+    static findById(id) {
+        const row = selectJog.get(id)
+
+        if (row) {
+            return new Jogging(row)
+        } else {
+            return null
+        }
+    }
+
+    static findByUser(id) {
+        const row = selectJogUser.get(id)
+
+        if (row) {
+            return new Jogging(row)
+        } else {
+            return null
+        }
+    }
+
+    static findAllFromUser(id){
+        const allJogs = selectJogUser.all(id)
+        return allJogs
+
+    }
+
+    constructor(databaseRow) {
+        this.user_id = databaseRow.user_id
+        this.date = databaseRow.date
+        this.distance = databaseRow.distance
+        this.duration = databaseRow.duration
+
+
+    }
 }
 
-module.exports = Jogs;
+module.exports = Jogging

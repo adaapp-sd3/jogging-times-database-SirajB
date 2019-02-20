@@ -1,51 +1,54 @@
-var db = require('../database')
+const db = require("../database");
 
 // get the queries ready - note the ? placeholders
-var insertUser = db.prepare(
-  'INSERT INTO user (name, email, password_hash) VALUES (?, ?, ?)'
-)
+const insertUser = db.prepare(
+  "INSERT INTO user (name, email, password_hash) VALUES (?, ?, ?)"
+);
 
-var selectUserById = db.prepare('SELECT * FROM user WHERE id = ?')
-
-var selectUserByEmail = db.prepare('SELECT * FROM user WHERE email = ?')
+const selectById = db.prepare("SELECT * FROM user WHERE id = ?");
+const selectByEmail = db.prepare("SELECT * FROM user WHERE email = ?");
+const deleteAccount = db.prepare("DELETE FROM user WHERE id = ?");
 
 class User {
   static insert(name, email, passwordHash) {
-    // run the insert query
-    var info = insertUser.run(name, email, passwordHash)
 
-    // check what the newly inserted row id is
-    var userId = info.lastInsertRowid
+    const info = insertUser.run(name, email, passwordHash);
 
-    return userId
+
+    const userId = info.lastInsertRowid;
+
+    return userId;
   }
 
   static findById(id) {
-    var row = selectUserById.get(id)
+    const row = selectById.get(id);
 
     if (row) {
-      return new User(row)
+      return new User(row);
     } else {
-      return null
+      return null;
     }
   }
 
   static findByEmail(email) {
-    var row = selectUserByEmail.get(email)
-
+    const row = selectByEmail.get(email);
     if (row) {
-      return new User(row)
+      return new User(row);
     } else {
-      return null
+      return null;
     }
   }
 
+  static deleteAccount(id) {
+    deleteAccount.run(id);
+  }
+
   constructor(databaseRow) {
-    this.id = databaseRow.id
-    this.name = databaseRow.name
-    this.email = databaseRow.email
-    this.passwordHash = databaseRow.password_hash
+    this.id = databaseRow.id;
+    this.name = databaseRow.name;
+    this.email = databaseRow.email;
+    this.passwordHash = databaseRow.password_hash;
   }
 }
 
-module.exports = User
+module.exports = User;
